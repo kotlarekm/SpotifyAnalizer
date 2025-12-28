@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  spotify-analyser:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./Data:/data/Data
+      - ./LocalDB:/data/LocalDB
+      - .:/app
+    environment:
+      - ANALYSER_PATH=/data/

@@ -1,0 +1,406 @@
+# 1.2 Importowanie bibliotek i modułów niezbędnych do stworzenia aplikacji i analizy danych
+from shiny import ui, App, reactive, render # potrzebne do stworzenia aplikacji
+from htmltools import css # potrzebne do stylizacji
+import pandas as pd # potrzebne do pracy z danymi
+import numpy as np # potrzebne do pracy z danymi
+from pathlib import Path # potrzebne do pracy z plikami
+from sklearn.metrics.pairwise import cosine_similarity # potrzebne do porównywania wektorów
+import os # potrzebne do pracy z plikami
+from faicons import icon_svg as icon # potrzebne do ikon
+import plotly.express as px # potrzebne do wizualizacji
+from shinywidgets import output_widget, render_plotly # potrzebne do wizualizacji 
+import ast # potrzebne do konwersji stringów do list
+from wordcloud import WordCloud #potrzebne do wizualizacji chmury słow
+import matplotlib.pyplot as plt #potrzebne do wizualizacji chmury słow
+from Plugins.DataProcess import WrappedDataPrepare # potrzebne do przygotowania danych
+from Plugins.DataLoad import ImportFromLocalPlugin # potrzebne do wczytywania danych
+from Plugins.DataSummary import WrappedSummaryPlugin # potrzebne do podsumowania danych
+from Plugins.Charts import wykres_pie, najpopularniejsze_tag, wykres_dekady, generate_plots_for_user # potrzebne do wizualizacji
+from Plugins.Utils import csv_path
+from Plugins.DataSummary import RecommendationPlugin
+from modules.data_loader import load_user_file
+
+folder_path_wrapped = Path(__file__).resolve().parent.parent / "Data"   # ścieżka do folderu z plikami które są wybierane w lewym panelu  
+
+def layout():
+    return ui.page_fluid(
+
+    ui.h3("Podobieństwo gustów użytkowników"),
+    ui.row(
+    ui.layout_columns(
+    ui.value_box(
+                title="Wspólne utwory",
+                id = "track_overlap_info",            
+                showcase=icon("music"),
+                value=ui.output_text("track_overlap_info")),
+    ui.value_box(
+                title="Wspólni wykonawcy",
+                id = "artists_overlap_info",            
+                showcase=icon("microphone"),
+                value=ui.output_text("artists_overlap_info")),
+    ui.value_box(
+                title="Wspólne tagi gatunków muzycznych",
+                id = "enre_overlap_info",            
+                showcase=icon("tags"),
+                value=ui.output_text("genre_overlap_info")),
+    col_widths=(4,4,4),)),
+
+ 
+    ui.h3("Porównanie parametrów użytkowników - Użytkownik bazowy"),
+    ui.output_data_frame("table_compare_parameters"),
+
+
+    ui.layout_columns(
+        ui.panel_well(
+            ui.h3("Tagi bazowego użytkownika"),
+            ui.output_text("top_tags_base_raport"),
+            ui.output_ui("wykres_base_raport"),
+        ),
+        ui.panel_well(
+            ui.h3("Tagi użytkownika porównawczego"),
+            ui.output_text("top_tags_compare_raport"),
+            ui.output_ui("wykres_compare_raport"),
+        ),
+    ),
+    ui.layout_columns(
+        ui.panel_well(
+            ui.h3("Dekady bazowego użytkownika"),
+            ui.output_ui("wykres_dekady_base_raport"),
+        ),
+        ui.panel_well(
+            ui.h3("Dekady użytkownika porównawczego"),
+            ui.output_ui("wykres_dekady_compare_raport"),
+        ),
+    ),
+    ui.h3("🧑‍🤝‍🧑 🎶 Porównanie gatunków muzycznych"),
+    ui.row(
+        ui.column(6, ui.output_plot("wordcloud_user1")),
+        ui.column(6, ui.output_plot("wordcloud_user2")),
+        ),
+    ui.row(
+        ui.column(6, ui.output_plot("popularity_histogram_base")),
+        ui.column(6, ui.output_plot("popularity_histogram_compare")),
+        ),
+    ui.row(
+        ui.column(3, ui.markdown("### 🅰️🎧 Polecane utwory od użytkownika bazowego")),
+        ui.column(3, ui.markdown("### 📀 Wspólne utwory")),
+        ui.column(3, ui.markdown("### 🎤 Wspólne wykonawcy")),
+        ui.column(3, ui.markdown("### 🅱️🎧 Polecane utwory od użytkownika porównywango")),
+        ),
+    ui.row(
+        ui.column(3, ui.output_table("recommended_tracks_base", class_="transparent-table")),
+        ui.column(3, ui.output_table("common_tracks")),
+        ui.column(3, ui.output_table("common_artist")),
+        ui.column(3, ui.output_table("recommended_tracks_compare")),
+    ),
+    )
+
+def server(input, output, session):
+
+    #Wczytanie ramek danych
+    @reactive.calc
+    def base_df():
+        df_base, _ = load_user_file(folder_path_wrapped, input.base_user())
+        return df_base
+
+    @reactive.calc
+    def base_results_df():
+        _, df_base_results = load_user_file(folder_path_wrapped, input.base_user())
+        return df_base_results
+
+    @reactive.calc
+    def compare_df():
+        df_compare, _ = load_user_file(folder_path_wrapped, input.compare_user())
+        return df_compare
+
+    @reactive.calc
+    def compare_results_df():
+        _, df_compare_results = load_user_file(folder_path_wrapped, input.compare_user())
+        return df_compare_results
+
+    # 3.3 Raport unikalności gustu
+#  % wspólnych utworów
+    @output()
+    @render.text
+    def track_overlap_info():
+        # Wczytanie danych
+        base_df = pd.read_csv(csv_path(folder_path_wrapped, input.base_user()))
+        compare_df = pd.read_csv(csv_path(folder_path_wrapped,input.compare_user()))
+
+    # Wspólne utwory
+        base_tracks = set(base_df["Track name"].dropna())
+        compare_tracks = set(compare_df["Track name"].dropna())
+        common_tracks = base_tracks & compare_tracks
+
+    # Procent wspólnych utworów
+        track_overlap_pct = (len(common_tracks) / len(base_tracks)) * 100 if base_tracks else 0
+    
+        return f"{track_overlap_pct:.1f}%"
+        
+#  % wspólnych artystów
+    @output()
+    @render.text
+    def artists_overlap_info():
+        # Wczytanie danych
+        base_df = pd.read_csv(csv_path(folder_path_wrapped, input.base_user()))
+        compare_df = pd.read_csv(csv_path(folder_path_wrapped, input.compare_user()))
+
+    # Wspólne utwory
+        base_artists = set(base_df["Artist name"].dropna())
+        compare_artists = set(compare_df["Artist name"].dropna())
+        common_artists = base_artists & compare_artists
+
+    # Procent wspólnych utworów
+        artists_overlap_pct = (len(common_artists) / len(base_artists)) * 100 if base_artists else 0
+    
+        return f"{artists_overlap_pct:.1f}%"
+
+    # % wspolnych tagów gatunków muzycznych
+    # def tagowanie gatunków
+    def get_unique_genres(df):
+        all_genres = set()
+        for item in df["Genres"].dropna():
+            try:
+                genres = ast.literal_eval(item)
+                for genre in genres:
+                    parts = genre.lower().split()
+                    all_genres.update(parts)
+            except Exception:
+                continue
+        return all_genres
+    # obliczenie procentu wspólnych gatunków
+    def genre_overlap_pct(base_df, compare_df):
+        base_genres = get_unique_genres(base_df)
+        compare_genres = get_unique_genres(compare_df)
+
+        common_genres = base_genres & compare_genres
+        overlap_pct = (len(common_genres) / len(base_genres)) * 100 if base_genres else 0
+        return f"{overlap_pct:.1f}%"
+
+    @output()
+    @render.text
+    def genre_overlap_info():
+        return genre_overlap_pct(base_df(), compare_df())
+
+
+    
+    #Porównanie parametrów
+    @render.data_frame
+    def table_compare_parameters():
+        df_base = base_results_df()
+        df_compare = compare_results_df()
+
+        df_parameters = pd.DataFrame(
+            {
+                " ": ["Taneczność", "Energiczność", "Tempo", "Wiek utworów", "Popularność", "Najpopularniejszy utwor", "Najmniej popularny utwór", "Najmłodszy utwór", "Najstarszy utwór"],
+                "Bazowy":[
+                        round(df_base["Danceability avg"][0], 4),
+                        round(df_base["Energy avg"][0], 4),
+                        round(df_base["Bpm avg"][0], 2),
+                        round(df_base["Age median"][0], 2),
+                        round(df_base["Popularity avg"][0], 2),
+                        df_base["Most popular"][0],
+                        df_base["Least popular"][0],
+                        df_base["Youngest track"][0],
+                        df_base["Oldest track"][0],
+                    ],
+                "Porównawczy":[
+                        round(df_compare["Danceability avg"][0], 4),
+                        round(df_compare["Energy avg"][0], 4),
+                        round(df_compare["Bpm avg"][0], 2),
+                        round(df_compare["Age median"][0], 2),
+                        round(df_compare["Popularity avg"][0], 2), 
+                        df_compare["Most popular"][0],
+                        df_compare["Least popular"][0],
+                        df_compare["Youngest track"][0],
+                        df_compare["Oldest track"][0],
+            ]})
+        
+        return render.DataTable(df_parameters, width='100%', height=None, styles={"margin-bottom": "0px"})
+
+    #Tagi użytkowników
+
+    @output
+    @render.ui
+    def wykres_base_raport():
+        return ui.HTML(wykres_pie(input.base_user()).to_html())
+
+    @output
+    @render.ui
+    def wykres_compare_raport():
+        return ui.HTML(wykres_pie(input.compare_user()).to_html())
+
+    # Dekady użytkowników
+    @output
+    @render.ui
+    def wykres_dekady_base():
+        return ui.HTML(wykres_dekady(input.base_user()).to_html())
+
+    @output
+    @render.ui
+    def wykres_dekady_compare():
+        return ui.HTML(wykres_dekady(input.compare_user()).to_html())
+    
+    # Porównanie gatunków muzycznych
+    @output
+    @render.text
+    def top_tags_base_raport():
+        return najpopularniejsze_tag(input.base_user())
+
+    @output
+    @render.text
+    def top_tags_compare_raport():
+        return najpopularniejsze_tag(input.compare_user())
+
+    @output
+    @render.ui
+    def wykres_dekady_base_raport():
+        return ui.HTML(wykres_dekady(input.base_user()).to_html())
+
+    @output
+    @render.ui
+    def wykres_dekady_compare_raport():
+        return ui.HTML(wykres_dekady(input.compare_user()).to_html())
+
+    # wykreslenie chmury tagow gatunków w zalezosci od uzytkowniaków
+    def generate_wordcloud(df):
+        all_genres = []
+        for item in df["Genres"].dropna():
+            try:
+                genres = ast.literal_eval(item)
+                for genre in genres:
+                    parts = genre.lower().split()
+                    all_genres.extend(parts)
+            except Exception:
+                continue
+        text = " ".join(all_genres)
+        wc = WordCloud(width=500, height=300, background_color="white").generate(text)
+        return wc
+
+    @output()
+    @render.plot
+    def wordcloud_user1():
+        wc = generate_wordcloud(base_df())
+    
+        fig = plt.figure(figsize=(6, 4))
+        fig.patch.set_alpha(0.3)  # Przezroczystość tła figury
+
+        ax = plt.gca()
+        ax.set_facecolor((1, 1, 1, 0.3))  # Przezroczystość tła 
+    
+        plt.imshow(wc, interpolation="bilinear")
+        plt.axis("off")
+        plt.title(f"{input.base_user()} - tagi")
+        plt.tight_layout()
+
+
+    @output()
+    @render.plot
+    def wordcloud_user2():
+        wc = generate_wordcloud(compare_df())
+        fig = plt.figure(figsize=(6, 4))
+        fig.patch.set_alpha(0.3)  # Przezroczystość tła figury
+
+        ax = plt.gca()
+        ax.set_facecolor((1, 1, 1, 0.3))  # Przezroczystość tła 
+
+        plt.imshow(wc, interpolation="bilinear")
+        plt.axis("off")
+        plt.title(f"{input.compare_user()} - tagi")
+        plt.tight_layout()
+
+    #histogram popularności utworów
+    @output
+    @render.plot  
+    def popularity_histogram_base():
+        popularity_histogram = generate_plots_for_user(base_df())["popularity_histogram"]
+        return popularity_histogram
+    
+    @output
+    @render.plot  
+    def popularity_histogram_compare():
+        popularity_histogram = generate_plots_for_user(compare_df())["popularity_histogram"]
+        return popularity_histogram
+
+    # rekomendacje
+    #rekomendacje użytkownika 1
+    @output
+    @render.table
+    def recommended_tracks_base():
+
+        df_base = base_df()
+        df_compare = compare_df()
+
+        Recommendation = RecommendationPlugin()
+        df_base_recommended, _ = Recommendation.show_recommendation(df_base, df_compare, 10)
+
+        return pd.DataFrame(df_base_recommended, columns=["Track name"])
+
+    @output
+    @render.table
+    def recommended_tracks_compare():
+
+        df_base = base_df()
+        df_compare = compare_df()
+
+        Recommendation = RecommendationPlugin()
+        _, df_compare_recommended = Recommendation.show_recommendation(df_base, df_compare, 10)
+
+        return pd.DataFrame(df_compare_recommended, columns=["Track name"])
+
+   # wspólne utwory
+    @output()
+    @render.table
+    def common_tracks():
+       # Pobierz dane
+        base_tracks = set(base_df()["Track name"].dropna())
+        compare_tracks = set(compare_df()["Track name"].dropna())
+        common = base_tracks & compare_tracks
+
+        if not common:
+            return pd.DataFrame([["Brak wspólnych artystów"]], columns=["Track name"])
+    
+        return pd.DataFrame(sorted(common), columns=["Track name"])
+    
+    # wspólni wykonawcy
+    @output()
+    @render.table
+    def common_artist():
+        base_tracks = set(base_df()["Artist name"].dropna())
+        compare_tracks = set(compare_df()["Artist name"].dropna())
+        common = base_tracks & compare_tracks
+
+        if not common:
+            return pd.DataFrame([["Brak wspólnych artystów"]], columns=["Artist name"])
+    
+        return pd.DataFrame(sorted(common), columns=["Artist name"])
+
+
+    # unikalne utwory
+    # UNIKALNE UTWORY UŻYTKOWNIKA 1
+    ### NOT USED
+    # @output()
+    # @render.table
+    # def unique_tracks_user1():
+    #     base_tracks = set(base_df()["Track name"].dropna())
+    #     compare_tracks = set(compare_df()["Track name"].dropna())
+    #     unique_user1 = base_tracks - compare_tracks
+
+    #     if not unique_user1:
+    #         return pd.DataFrame([["Brak unikalnych utworów"]], columns=["Track name"])
+    
+    #     return pd.DataFrame(sorted(unique_user1), columns=["Track name"]).head(10)
+    
+
+    # # UNIKALNE UTWORY UŻYTKOWNIKA 2
+    # @output()
+    # @render.table
+    # def unique_tracks_user2():
+    #     base_tracks = set(base_df()["Track name"].dropna())
+    #     compare_tracks = set(compare_df()["Track name"].dropna())
+    #     unique_user2 = compare_tracks - base_tracks
+
+    #     if not unique_user2:
+    #         return pd.DataFrame([["Brak unikalnych utworów"]], columns=["Track name"])
+
+    #     return pd.DataFrame(sorted(unique_user2), columns=["Track name"]).head(10)
