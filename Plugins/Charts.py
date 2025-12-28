@@ -1,36 +1,19 @@
-
 import pandas as pd
 import os
 import plotly.express as px
 from Plugins.DataProcess import WrappedDataPrepare
 from Plugins.DataLoad import ImportFromLocalPlugin
+from wordcloud import WordCloud #potrzebne do wizualizacji chmury słow
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 from collections import Counter
 from pathlib import Path
 import ast
 import itertools
 
 
-def przygotuj_dane_tagow(user_filename):
-    analyser_path = Path(os.getcwd()).resolve()
-
-    data_dir = os.path.join(analyser_path, "Data")
-
-    # Wczytanie danych użytkownika
-    prepare_file = WrappedDataPrepare()
-    full_path = os.path.join(data_dir, user_filename + ".csv")
-    df_wrapped = prepare_file.file_load(full_path)
-    df_wrapped = prepare_file.prepare_columns(df_wrapped)
-
-    local_path = os.path.join(analyser_path, "LocalDB", "LocalValues.csv")
-    try:
-        df_local = pd.read_csv(local_path, index_col="Unnamed: 0")
-    except:
-        df_local = pd.read_csv(local_path)
-
-    import_local = ImportFromLocalPlugin()
-    df = import_local.import_from_local_csv(df_wrapped, df_local)
+def przygotuj_dane_tagow(df, tag_number=7):
 
     all_tags = []
     for tags_list in df['Tags']:
@@ -41,8 +24,8 @@ def przygotuj_dane_tagow(user_filename):
     tag_counts = pd.Series(all_tags).value_counts(normalize=True) * 100
 
     # Najpopularniejsze tagi
-    top_tags = tag_counts.head(7)
-    other_tags = tag_counts[7:]
+    top_tags = tag_counts.head(tag_number)
+    other_tags = tag_counts[tag_number:]
 
     if not other_tags.empty:
         top_tags["Inne"] = other_tags.sum()
@@ -55,8 +38,8 @@ def przygotuj_dane_tagow(user_filename):
 
     return tag_df, top_3
 
-def wykres_pie(user_filename):
-    tag_df, _ = przygotuj_dane_tagow(user_filename)
+def wykres_pie(df, tag_number):
+    tag_df, _ = przygotuj_dane_tagow(df, tag_number)
     if tag_df.empty:
         fig = px.pie(values=[100], names=["Brak tagów"], title="Brak danych")
     else:
@@ -65,7 +48,7 @@ def wykres_pie(user_filename):
             tag_df,
             values='Percentage',
             names='Tag',
-            title=f"Udział tagów: {user_filename}",
+            title=f"Udział tagów",
             color_discrete_sequence=px.colors.qualitative.Pastel,
             hole=0.3  # efekt "donut"
         )
@@ -80,34 +63,17 @@ def wykres_pie(user_filename):
         )
     return fig
 
-def najpopularniejsze_tag(user_filename):
-    _, top_3 = przygotuj_dane_tagow(user_filename)
+def najpopularniejsze_tag(df):
+    _, top_3 = przygotuj_dane_tagow(df)
     if top_3:
         return f"Najczęściej słuchasz {', '.join(top_3)}"
     else:
         return "Brak danych o tagach."
 
-def wykres_dekady(user_filename):
-    analyser_path = Path(os.getcwd()).resolve()
-    data_dir = os.path.join(analyser_path, "Data")
-
-    prepare_file = WrappedDataPrepare()
-    full_path = os.path.join(data_dir, user_filename + ".csv")
-    df_wrapped = prepare_file.file_load(full_path)
-    df_wrapped = prepare_file.prepare_columns(df_wrapped)
-
-    local_path = os.path.join(analyser_path, "LocalDB", "LocalValues.csv")
-    try:
-        df_local = pd.read_csv(local_path, index_col="Unnamed: 0")
-    except:
-        df_local = pd.read_csv(local_path)
-
-    import_local = ImportFromLocalPlugin()
-    df = import_local.import_from_local_csv(df_wrapped, df_local)
-
+def wykres_dekady(df):
     df = df.dropna(subset=['Spotify Release Year'])
     df['Decade'] = (df['Spotify Release Year'] // 10 * 10).astype(int).astype(str) + "s"
-
+  
     decade_counts = df['Decade'].value_counts(normalize=True) * 100
     decade_df = decade_counts.reset_index()
     decade_df.columns = ['Decade', 'Percentage']
@@ -120,7 +86,7 @@ def wykres_dekady(user_filename):
             decade_df,
             x='Decade',
             y='Percentage',
-            title=f"Udział dekad: {user_filename}",
+            title=f"Udział dekad",
             labels={'Percentage': 'Procent (%)', 'Decade': 'Dekada'},
             text='Percentage',
             color='Decade',
@@ -208,10 +174,15 @@ def generate_plots_for_user(df):
         "fig1": fig1,
         "fig4": fig4,
         "fig8": fig8,
-        "popularity_histogram": popularity_histogram,
     }
 
-
+def generate_histogram(df, column):
+    fig, ax = plt.subplots()  # Tworzy nową figurę, unikając konfliktów
+    sns.histplot(df[column], kde=True, bins=10, color="skyblue", ax=ax)
+    ax.set_xlabel(column)
+    ax.set_ylabel("Liczba utworów")
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+    return fig
 
 def generate_fig6(df):
     df = df.sort_values(by="Spotify Popularity", ascending=False)
@@ -371,13 +342,13 @@ def generate_fig11(df):
 
 
 
-def generate_fig_track_bpm(df):
-    fig, ax = plt.subplots()  # Tworzy nową figurę, unikając konfliktów
-    sns.histplot(df["bpm"], kde=True, bins=10, color="skyblue", ax=ax)
-    ax.set_xlabel("BPM")
-    ax.set_ylabel("Popularność (skala od 0 do 100)")
+# def generate_fig_track_bpm(df):
+#     fig, ax = plt.subplots()  # Tworzy nową figurę, unikając konfliktów
+#     sns.histplot(df["bpm"], kde=True, bins=10, color="skyblue", ax=ax)
+#     ax.set_xlabel("BPM")
+#     ax.set_ylabel("Liczba utworów")
     
-    return fig
+#     return fig
 
 
 
@@ -525,3 +496,40 @@ def generate_tree_map(df):
     output_path = "output_tree_map.png"  # Ścieżka zapisu wykresu
     
     return tree_map_fig  # <- Now returns the plotly figure
+
+    #Generowanie chmury tagów
+
+def generate_wordcloud(df):
+    all_genres = []
+
+    for item in df["Genres"].dropna():
+        try:
+            parsed = ast.literal_eval(item)
+        except Exception:
+            parsed = item
+
+        # tuple lub lista
+        if isinstance(parsed, (tuple, list)):
+            for genre in parsed:
+                all_genres.append(genre.lower())
+        else:
+            # pojedynczy string
+            all_genres.append(parsed.lower())
+
+    text = " ".join(all_genres)
+    wc = WordCloud(width=500, height=300, background_color="white").generate(text)
+
+    return wc
+
+    # all_genres = []
+    # for item in df["Genres"].dropna():
+    #     try:
+    #         genres = ast.literal_eval(item)
+    #         for genre in genres:
+    #             parts = genre.lower().split()
+    #             all_genres.extend(parts)
+    #     except Exception:
+    #         continue
+    # text = " ".join(all_genres)
+    # wc = WordCloud(width=500, height=300, background_color="white").generate(text)
+    # return wc

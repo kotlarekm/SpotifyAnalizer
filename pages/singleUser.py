@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt #potrzebne do wizualizacji chmury słow
 from Plugins.DataProcess import WrappedDataPrepare # potrzebne do przygotowania danych
 from Plugins.DataLoad import ImportFromLocalPlugin # potrzebne do wczytywania danych
 from Plugins.DataSummary import WrappedSummaryPlugin # potrzebne do podsumowania danych
-from Plugins.Charts import generate_fig_track_bpm, generate_tree_map  # potrzebne do wizualizacji
+from Plugins.Charts import generate_histogram, generate_tree_map  # potrzebne do wizualizacji
 from Plugins.DataSummary import RecommendationPlugin
 from modules.data_loader import load_user_file
 
@@ -386,8 +386,8 @@ def server(input, output, session):
     @output
     @render.plot  
     def fig_track_bpm():
-        fig = generate_fig_track_bpm(base_df())
-        return fig
+        return generate_histogram(base_df(), "bpm")
+
     
     @output
     @render_plotly

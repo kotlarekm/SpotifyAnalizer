@@ -15,8 +15,8 @@ import matplotlib.pyplot as plt #potrzebne do wizualizacji chmury słow
 from Plugins.DataProcess import WrappedDataPrepare # potrzebne do przygotowania danych
 from Plugins.DataLoad import ImportFromLocalPlugin # potrzebne do wczytywania danych
 from Plugins.DataSummary import WrappedSummaryPlugin # potrzebne do podsumowania danych
-from Plugins.Charts import wykres_pie, najpopularniejsze_tag, wykres_dekady, generate_plots_for_user # potrzebne do wizualizacji
-from Plugins.Utils import csv_path
+from Plugins.Charts import wykres_pie, najpopularniejsze_tag, wykres_dekady, generate_plots_for_user, generate_wordcloud, generate_histogram # potrzebne do wizualizacji
+from Plugins.Utils import csv_path, create_track_artist_column
 from Plugins.DataSummary import RecommendationPlugin
 from modules.data_loader import load_user_file
 
@@ -40,7 +40,7 @@ def layout():
                 value=ui.output_text("artists_overlap_info")),
     ui.value_box(
                 title="Wspólne tagi gatunków muzycznych",
-                id = "enre_overlap_info",            
+                id = "genre_overlap_info",            
                 showcase=icon("tags"),
                 value=ui.output_text("genre_overlap_info")),
     col_widths=(4,4,4),)),
@@ -223,59 +223,39 @@ def server(input, output, session):
     @output
     @render.ui
     def wykres_base_raport():
-        return ui.HTML(wykres_pie(input.base_user()).to_html())
+        return wykres_pie(base_df(), 15)
 
     @output
     @render.ui
     def wykres_compare_raport():
-        return ui.HTML(wykres_pie(input.compare_user()).to_html())
+        return wykres_pie(compare_df(), 15)
 
-    # Dekady użytkowników
-    @output
-    @render.ui
-    def wykres_dekady_base():
-        return ui.HTML(wykres_dekady(input.base_user()).to_html())
 
-    @output
-    @render.ui
-    def wykres_dekady_compare():
-        return ui.HTML(wykres_dekady(input.compare_user()).to_html())
-    
     # Porównanie gatunków muzycznych
     @output
     @render.text
     def top_tags_base_raport():
-        return najpopularniejsze_tag(input.base_user())
+        return najpopularniejsze_tag(base_df())
+   
+    # Dekady użytkowników
 
     @output
     @render.text
     def top_tags_compare_raport():
-        return najpopularniejsze_tag(input.compare_user())
+        return najpopularniejsze_tag(compare_df() )
 
     @output
     @render.ui
     def wykres_dekady_base_raport():
-        return ui.HTML(wykres_dekady(input.base_user()).to_html())
+        return wykres_dekady(base_df())
 
     @output
     @render.ui
     def wykres_dekady_compare_raport():
-        return ui.HTML(wykres_dekady(input.compare_user()).to_html())
+        return wykres_dekady(compare_df())
 
     # wykreslenie chmury tagow gatunków w zalezosci od uzytkowniaków
-    def generate_wordcloud(df):
-        all_genres = []
-        for item in df["Genres"].dropna():
-            try:
-                genres = ast.literal_eval(item)
-                for genre in genres:
-                    parts = genre.lower().split()
-                    all_genres.extend(parts)
-            except Exception:
-                continue
-        text = " ".join(all_genres)
-        wc = WordCloud(width=500, height=300, background_color="white").generate(text)
-        return wc
+
 
     @output()
     @render.plot
@@ -290,7 +270,7 @@ def server(input, output, session):
     
         plt.imshow(wc, interpolation="bilinear")
         plt.axis("off")
-        plt.title(f"{input.base_user()} - tagi")
+        plt.title(f"{input.base_user()} - gatunki")
         plt.tight_layout()
 
 
@@ -306,21 +286,19 @@ def server(input, output, session):
 
         plt.imshow(wc, interpolation="bilinear")
         plt.axis("off")
-        plt.title(f"{input.compare_user()} - tagi")
+        plt.title(f"{input.compare_user()} - gatunki")
         plt.tight_layout()
 
     #histogram popularności utworów
     @output
     @render.plot  
     def popularity_histogram_base():
-        popularity_histogram = generate_plots_for_user(base_df())["popularity_histogram"]
-        return popularity_histogram
+        return generate_histogram(base_df(), "Spotify Popularity")
     
     @output
     @render.plot  
     def popularity_histogram_compare():
-        popularity_histogram = generate_plots_for_user(compare_df())["popularity_histogram"]
-        return popularity_histogram
+        return generate_histogram(compare_df(), "Spotify Popularity")
 
     # rekomendacje
     #rekomendacje użytkownika 1
@@ -333,8 +311,9 @@ def server(input, output, session):
 
         Recommendation = RecommendationPlugin()
         df_base_recommended, _ = Recommendation.show_recommendation(df_base, df_compare, 10)
+        df_base_recommended = df_base_recommended.rename(columns = {"Track Artist":"Track"} )
 
-        return pd.DataFrame(df_base_recommended, columns=["Track name"])
+        return pd.DataFrame(df_base_recommended, columns=["Track"])
 
     @output
     @render.table
@@ -345,22 +324,26 @@ def server(input, output, session):
 
         Recommendation = RecommendationPlugin()
         _, df_compare_recommended = Recommendation.show_recommendation(df_base, df_compare, 10)
+        df_compare_recommended = df_compare_recommended.rename(columns = {"Track Artist":"Track"} )
 
-        return pd.DataFrame(df_compare_recommended, columns=["Track name"])
+        return pd.DataFrame(df_compare_recommended, columns=["Track"])
 
    # wspólne utwory
     @output()
     @render.table
     def common_tracks():
        # Pobierz dane
-        base_tracks = set(base_df()["Track name"].dropna())
-        compare_tracks = set(compare_df()["Track name"].dropna())
+
+
+        base_tracks = set(create_track_artist_column(base_df())["Track Artist"].dropna())
+        compare_tracks = set(create_track_artist_column(compare_df())["Track Artist"].dropna())
         common = base_tracks & compare_tracks
 
+        
         if not common:
-            return pd.DataFrame([["Brak wspólnych artystów"]], columns=["Track name"])
-    
-        return pd.DataFrame(sorted(common), columns=["Track name"])
+            return pd.DataFrame([["Brak wspólnych artystów"]], columns=["Track Artist"])
+        else:
+            return pd.DataFrame(sorted(common), columns=["Track"])
     
     # wspólni wykonawcy
     @output()

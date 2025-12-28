@@ -4,7 +4,7 @@ def create_track_artist_column(df):
     '''
     łączy kolumnę track i artist w jedną
     '''
-    df["Track Artist"] = df["Track name"] +" "+ df["Artist name"]
+    df["Track Artist"] = df["Track name"] +" - "+ df["Artist name"]
     return df
 
 def cut_brackets(name):
