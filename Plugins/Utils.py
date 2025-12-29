@@ -36,3 +36,25 @@ def find_similar_songs(base_df, compare_df, top_n=5):
 # Ścieżka do plików CSV
 def csv_path(folder_path, filename_stem):
     return folder_path / f"{filename_stem}.csv"
+
+# def tagowanie gatunków
+def get_unique_genres(df):
+    all_genres = set()
+    for item in df["Genres"].dropna():
+        try:
+            genres = ast.literal_eval(item)
+            for genre in genres:
+                parts = genre.lower().split()
+                all_genres.update(parts)
+        except Exception:
+            continue
+    return all_genres
+
+# obliczenie procentu wspólnych gatunków
+def genre_overlap_pct(base_df, top_df):
+    base_genres = get_unique_genres(base_df)
+    compare_genres = get_unique_genres(top_df)
+
+    common_genres = base_genres & compare_genres
+    overlap_pct = (len(common_genres) / len(base_genres)) * 100 if base_genres else 0
+    return f"{overlap_pct:.1f}%"

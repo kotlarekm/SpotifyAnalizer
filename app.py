@@ -8,7 +8,7 @@
 # 1.2 Importowanie bibliotek i modułów niezbędnych do stworzenia aplikacji i analizy danych
 from shiny import ui, App # potrzebne do stworzenia aplikacji
 from htmltools import css # potrzebne do stylizacji
-from pages import singleUser, twoUsers, userGlobal, fileSelection
+from pages import singleUser, twoUsers, userGlobal, globalAnalize, fileSelection
 
 
 # 2. Tworzymy interfejs użytkownika (UI)
@@ -25,12 +25,16 @@ app_ui = ui.page_fluid(
                     singleUser.layout()
 
                 ),
-                ui.nav_panel("Raport unikalności gustu", 
+                ui.nav_panel("Porównanie gustów użytkowników", 
                     twoUsers.layout()
                 ),
                 ui.nav_panel(
-                    "Porównanie statystyk globalnych z danymi użytkownika",
+                    "Porównanie z danymi globlanymi",
                    userGlobal.layout()
+                ),
+                ui.nav_panel(
+                    "Analiza danych globalnych",
+                   globalAnalize.layout()
                 )
             )
         ),
@@ -54,6 +58,7 @@ def server(input, output, session):
     singleUser.server(input, output, session)
     twoUsers.server(input, output, session)
     userGlobal.server(input, output, session)
+    globalAnalize.server(input, output, session)
     fileSelection.server(input, output, session)
 
 

@@ -424,14 +424,14 @@ def generate_fig14(df):
     return fig
 
 
-def generate_fig16(df, df_top):
+def generate_popularity_boxplot_both(df, df_top):
 
     # nazwy osi
     df_user_pop = df[["Spotify Popularity"]].dropna().rename(columns={"Spotify Popularity": "Popularność"})
-    df_user_pop["Źródło"] = "Użytkownik"
+    df_user_pop["Źródło"] = "Użytkownik bazowy"
 
     df_global_pop = df_top[["Spotify Popularity"]].dropna().rename(columns={"Spotify Popularity": "Popularność"})
-    df_global_pop["Źródło"] = "Globalne"
+    df_global_pop["Źródło"] = "Użytkownik porównawczy"
 
     pop_df = pd.concat([df_user_pop, df_global_pop])
     # Raport i przezroczystość tła
@@ -441,19 +441,19 @@ def generate_fig16(df, df_top):
 
     sns.boxplot(data=pop_df, x="Źródło", y="Popularność", ax=ax)
     # Tytuł wykresu
-    ax.set_title("Porównanie popularności utworów: Użytkownik vs. Globalne Hity", fontsize=14, y=1.0)
+    ax.set_title("Porównanie popularności utworów", fontsize=14, y=1.0)
     return fig
 
 
 # Trzeba dodać odpowiednią ścieżkę pliku global // parent.parent 
-def generate_fig15(df, df_top, save=False):
+def generate_bpm_histogram_both(df, df_top, save=False):
 
     # raport
     user_bpm = pd.to_numeric(df["bpm"], errors="coerce").dropna()
     global_bpm = pd.to_numeric(df_top["bpm"], errors="coerce").dropna()
     bpm_df = pd.DataFrame({
         "BPM": list(user_bpm) + list(global_bpm),
-        "Źródło": ["Użytkownik"] * len(user_bpm) + ["Globalne"] * len(global_bpm)
+        "Źródło": ["Użytkownik bazowy"] * len(user_bpm) + ["Użytkownik porównawczy"] * len(global_bpm)
     })
 
     # Utwórz figurę i oś ręcznie, by mieć pełną kontrolę
@@ -464,11 +464,20 @@ def generate_fig15(df, df_top, save=False):
     fig.patch.set_alpha(0.3)         # przezroczystość całej figury
 
     # Rysowanie wykresu
-    sns.histplot(data=bpm_df, x="BPM", hue="Źródło", kde=True, bins=20, multiple="dodge", ax=ax)
+    sns.histplot(
+        data=bpm_df,
+        x="BPM", 
+        stat='percent', 
+        common_norm=False, 
+        hue="Źródło", 
+        kde=True, 
+        bins=20, 
+        multiple="dodge", 
+        ax=ax)
 
     # Tytuł (opcjonalnie)
-    ax.set_title("Porównanie rozkładu BPM: Użytkownik vs Globalne", fontsize=14, y=1.0)
-    ax.set_ylabel("Liczba utworów")
+    ax.set_title("Porównanie rozkładu BPM", fontsize=14, y=1.0)
+    ax.set_ylabel("Procent utworów")
     ax.set_xlabel("BPM")
     # Zapis z przezroczystym tłem (opcjonalnie)
     if save:

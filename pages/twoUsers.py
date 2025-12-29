@@ -15,8 +15,8 @@ import matplotlib.pyplot as plt #potrzebne do wizualizacji chmury słow
 from Plugins.DataProcess import WrappedDataPrepare # potrzebne do przygotowania danych
 from Plugins.DataLoad import ImportFromLocalPlugin # potrzebne do wczytywania danych
 from Plugins.DataSummary import WrappedSummaryPlugin # potrzebne do podsumowania danych
-from Plugins.Charts import wykres_pie, najpopularniejsze_tag, wykres_dekady, generate_plots_for_user, generate_wordcloud, generate_histogram # potrzebne do wizualizacji
-from Plugins.Utils import csv_path, create_track_artist_column
+from Plugins.Charts import wykres_pie, najpopularniejsze_tag, wykres_dekady, generate_plots_for_user, generate_wordcloud, generate_histogram, generate_popularity_boxplot_both, generate_bpm_histogram_both # potrzebne do wizualizacji
+from Plugins.Utils import csv_path, create_track_artist_column, genre_overlap_pct
 from Plugins.DataSummary import RecommendationPlugin
 from modules.data_loader import load_user_file
 
@@ -81,6 +81,16 @@ def layout():
         ui.column(6, ui.output_plot("popularity_histogram_base")),
         ui.column(6, ui.output_plot("popularity_histogram_compare")),
         ),
+
+    ui.layout_columns(
+        ui.panel_well(
+            ui.h3("Porównanie bpm"),
+            ui.output_plot('bpm_histogram_both')),
+        
+        ui.panel_well(
+            ui.h3("Porównanie popularności"),
+            ui.output_plot('popularity_boxplot_both')),
+    ),
     ui.row(
         ui.column(3, ui.markdown("### 🅰️🎧 Polecane utwory od użytkownika bazowego")),
         ui.column(3, ui.markdown("### 📀 Wspólne utwory")),
@@ -92,7 +102,7 @@ def layout():
         ui.column(3, ui.output_table("common_tracks")),
         ui.column(3, ui.output_table("common_artist")),
         ui.column(3, ui.output_table("recommended_tracks_compare")),
-    ),
+    )
     )
 
 def server(input, output, session):
@@ -123,13 +133,9 @@ def server(input, output, session):
     @output()
     @render.text
     def track_overlap_info():
-        # Wczytanie danych
-        base_df = pd.read_csv(csv_path(folder_path_wrapped, input.base_user()))
-        compare_df = pd.read_csv(csv_path(folder_path_wrapped,input.compare_user()))
-
     # Wspólne utwory
-        base_tracks = set(base_df["Track name"].dropna())
-        compare_tracks = set(compare_df["Track name"].dropna())
+        base_tracks = set(base_df()["Track name"].dropna())
+        compare_tracks = set(compare_df()["Track name"].dropna())
         common_tracks = base_tracks & compare_tracks
 
     # Procent wspólnych utworów
@@ -141,13 +147,9 @@ def server(input, output, session):
     @output()
     @render.text
     def artists_overlap_info():
-        # Wczytanie danych
-        base_df = pd.read_csv(csv_path(folder_path_wrapped, input.base_user()))
-        compare_df = pd.read_csv(csv_path(folder_path_wrapped, input.compare_user()))
-
     # Wspólne utwory
-        base_artists = set(base_df["Artist name"].dropna())
-        compare_artists = set(compare_df["Artist name"].dropna())
+        base_artists = set(base_df()["Artist name"].dropna())
+        compare_artists = set(compare_df()["Artist name"].dropna())
         common_artists = base_artists & compare_artists
 
     # Procent wspólnych utworów
@@ -156,27 +158,6 @@ def server(input, output, session):
         return f"{artists_overlap_pct:.1f}%"
 
     # % wspolnych tagów gatunków muzycznych
-    # def tagowanie gatunków
-    def get_unique_genres(df):
-        all_genres = set()
-        for item in df["Genres"].dropna():
-            try:
-                genres = ast.literal_eval(item)
-                for genre in genres:
-                    parts = genre.lower().split()
-                    all_genres.update(parts)
-            except Exception:
-                continue
-        return all_genres
-    # obliczenie procentu wspólnych gatunków
-    def genre_overlap_pct(base_df, compare_df):
-        base_genres = get_unique_genres(base_df)
-        compare_genres = get_unique_genres(compare_df)
-
-        common_genres = base_genres & compare_genres
-        overlap_pct = (len(common_genres) / len(base_genres)) * 100 if base_genres else 0
-        return f"{overlap_pct:.1f}%"
-
     @output()
     @render.text
     def genre_overlap_info():
@@ -299,7 +280,19 @@ def server(input, output, session):
     @render.plot  
     def popularity_histogram_compare():
         return generate_histogram(compare_df(), "Spotify Popularity")
+    
+    @output
+    @render.plot  
+    def bpm_histogram_both():
+        fig = generate_bpm_histogram_both(base_df(), compare_df())
+        return fig
 
+    @output
+    @render.plot  
+    def popularity_boxplot_both():
+        fig = generate_popularity_boxplot_both(base_df(), compare_df())
+        return fig
+    
     # rekomendacje
     #rekomendacje użytkownika 1
     @output
@@ -357,6 +350,7 @@ def server(input, output, session):
             return pd.DataFrame([["Brak wspólnych artystów"]], columns=["Artist name"])
     
         return pd.DataFrame(sorted(common), columns=["Artist name"])
+
 
 
     # unikalne utwory
