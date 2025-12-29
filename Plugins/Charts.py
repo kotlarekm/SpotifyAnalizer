@@ -132,49 +132,6 @@ def make_hover_text(row):
         parts.append(f'Energia: {row["energy"]:.2f}')
     return "<br>".join(parts)
 
-# Funkcja generująca wykresy
-def generate_plots_for_user(df):
-# Wybierz top 10 utworów według popularności
-    df_top10 = df.sort_values(by="Spotify Popularity", ascending=False).head(10)
-
-# Histogram tempa tylko dla top 10
-    fig1 = sns.histplot(df_top10['bpm'], kde=True)
-    fig1.set_title("Histogram tempa utworów (Top 10 wg popularności)", fontsize=14, y=1.0)
-    
-
-    # Wykres 3: Tree Map Artystów i Albumów
-    # Wyświetla interaktywną mapę z artystami i albumami na podstawie popularności
-    df["hover_text"] = df.apply(make_hover_text, axis=1)
-    tree_map_plot = px.treemap(df, path=["Artist name", "Album"], values="Spotify Popularity", hover_name="hover_text", title="Tree Map – Artysta i album z opisem")
-
-    # Wykres 4: Popularność utworów
-    # Prezentuje słupkowy wykres popularności różnych utworów
-    fig4 = sns.barplot(data=df, x="Track name", y="Spotify Popularity", hue="Spotify Popularity", palette="coolwarm")
-    fig4.set_title("Popularność utworów", fontsize=14, y=1.0)
-
-
-    # Wykres 8: BPM vs Energia
-    # Pokazuje związek między BPM a energią utworów
-    fig8 = sns.scatterplot(data=df, x="bpm", y="energy", hue="Spotify Popularity")
-    fig8.set_title("BPM vs Energia")
-
-    # Wykres 9: Histogram popularności utworów
-    # Pokazuje histogram popularności utworów
-    df_top10 = df.sort_values(by="Spotify Popularity", ascending=False).head(100)
-    popularity_histogram, ax9 = plt.subplots()
-    sns.histplot(df_top10["Spotify Popularity"], kde=True, ax=ax9)
-    ax9.set_title("Histogram popularności utworów", fontsize=14, y=1.0)
-    ax9.set_ylabel("Liczba utworów")
-    ax9.set_xlabel("Popularność (skala od 0 do 100)")
-    # Przezroczystość tła dla wykresu 9
-    ax9.set_facecolor((1, 1, 1, 0.3))
-    popularity_histogram.patch.set_alpha(0.3)
-
-    return {
-        "fig1": fig1,
-        "fig4": fig4,
-        "fig8": fig8,
-    }
 
 def generate_histogram(df, column):
     fig, ax = plt.subplots()  # Tworzy nową figurę, unikając konfliktów
@@ -184,7 +141,7 @@ def generate_histogram(df, column):
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     return fig
 
-def generate_fig6(df):
+def generate_fig_popularity_tracks(df):
     df = df.sort_values(by="Spotify Popularity", ascending=False)
     
     # Tworzymy nową figurę i osie
@@ -208,7 +165,7 @@ def generate_fig6(df):
     return fig  # Shiny wymaga zwrotu całej figury, a nie samej osi
 
 
-def generate_fig8(df):
+def generate_fig_popularity_danceability(df):
 
     fig, ax = plt.subplots()
     fig.patch.set_alpha(0.3)
@@ -265,7 +222,7 @@ def generate_fig8(df):
 
 
 
-def generate_fig10(df):
+def generate_fig_energy_popularity(df):
 
     def safe_literal_eval(val):
         try:
@@ -306,20 +263,26 @@ def generate_fig10(df):
 
 
 
-def generate_fig11(df):
+def generate_fig_top_genres(df):
 
-    def safe_literal_eval(val):
+    all_genres = []
+
+    for item in df["Genres"].dropna():
         try:
-            if isinstance(val, str):
-                return ast.literal_eval(val)
-            return [] if pd.isna(val) else val
-        except:
-            return []
+            parsed = ast.literal_eval(item)
+        except Exception:
+            parsed = item
 
-    df["Genres"] = df["Genres"].apply(safe_literal_eval)
+        # tuple lub lista
+        if isinstance(parsed, (tuple, list)):
+            for genre in parsed:
+                all_genres.append(genre.lower())
+        else:
+            # pojedynczy string
+            all_genres.append(parsed.lower())
 
-    genre_counts = Counter([genre for genres in df["Genres"] for genre in genres])
-    genre_df = pd.DataFrame(genre_counts.items(), columns=["Gatunek", "Liczba"]).sort_values("Liczba", ascending=False)
+    genre_df = pd.Series(all_genres).value_counts().reset_index() 
+    genre_df.columns = ["Gatunek", "Liczba"]
 
     if genre_df.empty:
         print("Brak gatunków do wyświetlenia.")
@@ -334,26 +297,13 @@ def generate_fig11(df):
 
     sns.barplot(data=genre_df.head(15), x="Liczba", y="Gatunek", hue="Gatunek", palette="coolwarm", ax=ax)
 
-    ax.set_title("Najczęściej występujące gatunki", fontsize=14, y=1.0)
     ax.set_xlabel("Liczba utworów")
     ax.set_ylabel("Gatunek")
 
     return fig
 
 
-
-# def generate_fig_track_bpm(df):
-#     fig, ax = plt.subplots()  # Tworzy nową figurę, unikając konfliktów
-#     sns.histplot(df["bpm"], kde=True, bins=10, color="skyblue", ax=ax)
-#     ax.set_xlabel("BPM")
-#     ax.set_ylabel("Liczba utworów")
-    
-#     return fig
-
-
-
-
-def generate_fig13(df):
+def generate_fig_genres_popularity(df):
 
     def safe_literal_eval(val):
         try:
@@ -396,7 +346,7 @@ def generate_fig13(df):
 
 
 
-def generate_fig14(df):
+def generate_fig_tempo_popularity(df):
 
     df["Popularity"] = pd.to_numeric(df["Spotify Popularity"], errors='coerce')
     df["bpm"] = pd.to_numeric(df["bpm"], errors='coerce')
@@ -481,7 +431,7 @@ def generate_bpm_histogram_both(df, df_top, save=False):
     ax.set_xlabel("BPM")
     # Zapis z przezroczystym tłem (opcjonalnie)
     if save:
-        fig.savefig("fig15.png", transparent=True)
+        fig.savefig("fig_bpm_histogram_both.png", transparent=True)
 
     return fig
 

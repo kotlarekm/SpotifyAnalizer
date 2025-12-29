@@ -1,4 +1,5 @@
 from sklearn.metrics.pairwise import cosine_similarity # potrzebne do porównywania wektorów
+import ast
 
 def create_track_artist_column(df):
     '''

@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt #potrzebne do wizualizacji chmury słow
 from Plugins.DataProcess import WrappedDataPrepare # potrzebne do przygotowania danych
 from Plugins.DataLoad import ImportFromLocalPlugin # potrzebne do wczytywania danych
 from Plugins.DataSummary import WrappedSummaryPlugin # potrzebne do podsumowania danych
-from Plugins.Charts import wykres_pie, najpopularniejsze_tag, wykres_dekady, generate_plots_for_user, generate_wordcloud, generate_histogram, generate_popularity_boxplot_both, generate_bpm_histogram_both # potrzebne do wizualizacji
+from Plugins.Charts import wykres_pie, najpopularniejsze_tag, wykres_dekady, generate_wordcloud, generate_histogram, generate_popularity_boxplot_both, generate_bpm_histogram_both # potrzebne do wizualizacji
 from Plugins.Utils import csv_path, create_track_artist_column, genre_overlap_pct
 from Plugins.DataSummary import RecommendationPlugin
 from modules.data_loader import load_user_file

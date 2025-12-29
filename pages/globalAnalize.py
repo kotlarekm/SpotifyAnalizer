@@ -1,23 +1,8 @@
 # 1.2 Importowanie bibliotek i modułów niezbędnych do stworzenia aplikacji i analizy danych
-from shiny import ui, App, reactive, render # potrzebne do stworzenia aplikacji
+from shiny import ui, reactive, render # potrzebne do stworzenia aplikacji
 from htmltools import css # potrzebne do stylizacji
-import pandas as pd # potrzebne do pracy z danymi
-import numpy as np # potrzebne do pracy z danymi
 from pathlib import Path # potrzebne do pracy z plikami
-from sklearn.metrics.pairwise import cosine_similarity # potrzebne do porównywania wektorów
-import os # potrzebne do pracy z plikami
-from faicons import icon_svg as icon # potrzebne do ikon
-import plotly.express as px # potrzebne do wizualizacji
-from shinywidgets import output_widget, render_plotly # potrzebne do wizualizacji 
-import ast # potrzebne do konwersji stringów do list
-from wordcloud import WordCloud #potrzebne do wizualizacji chmury słow
-import matplotlib.pyplot as plt #potrzebne do wizualizacji chmury słow
-from Plugins.DataProcess import WrappedDataPrepare # potrzebne do przygotowania danych
-from Plugins.DataLoad import ImportFromLocalPlugin # potrzebne do wczytywania danych
-from Plugins.DataSummary import WrappedSummaryPlugin # potrzebne do podsumowania danych
-from Plugins.Charts import generate_fig6, generate_fig8, generate_fig10, generate_fig11, generate_fig13, generate_fig14
-import importlib.util
-from Plugins.DataSummary import RecommendationPlugin
+from Plugins.Charts import generate_fig_popularity_tracks, generate_fig_popularity_danceability, generate_fig_energy_popularity, generate_fig_top_genres, generate_fig_genres_popularity, generate_fig_tempo_popularity
 from modules.data_loader import load_user_file
 
 folder_path_wrapped = Path(__file__).resolve().parent.parent / "Data"   # ścieżka do folderu z plikami które są wybierane w lewym panelu  
@@ -28,27 +13,34 @@ def layout():
 
         ui.row(
             ui.column(12,
-                        ui.h2("Porównanie danych", classes="text-center"))),
+                ui.h2("Porównanie danych", classes="text-center"))),
         ui.row(
             ui.column(6,
-                ui.h3("🧑‍🤝‍🧑 Użytkownik")),
+                ui.h3("Popularność utworów"),
+                ui.output_plot("fig_popularity_tracks")),
+
             ui.column(6,
-                ui.h3("🎶 Globalne dane"))    ),
+                ui.h3("Energia vs. taneczność"),
+                ui.output_plot("fig_popularity_danceability")
+                )    ),
         ui.row(
             ui.column(6,
-                ui.output_plot("fig6b")),
+                ui.h3("Energia vs. popularność"),
+                ui.output_plot("fig_energy_popularity")),
+                
             ui.column(6,
-                ui.output_plot("fig8b"))    ),
-        ui.row(        
-            ui.column(6,    
-                ui.output_plot("fig10b")),
-            ui.column(6,    
-                ui.output_plot("fig11b"))   ),
-        ui.row(        
-            ui.column(6,    
-                ui.output_plot("fig13b")),
-            ui.column(6,    
-                ui.output_plot("fig14b"))   ),
+                ui.h3("Najczęściej występujące gatunki"),
+                ui.output_plot("fig_top_genres")
+                )    ),
+        ui.row(
+            ui.column(6,
+                ui.h3("Średnia popularności gatunków"),
+                ui.output_plot("fig_genres_popularity")),
+                
+            ui.column(6,
+                ui.h3("Tempo a popularność"),
+                ui.output_plot("fig_tempo_popularity")
+                )    ),
         )
 
 def server(input, output, session):
@@ -65,37 +57,37 @@ def server(input, output, session):
     
     @output
     @render.plot  
-    def fig11b():
-        fig = generate_fig11(top_df())
+    def fig_popularity_tracks():
+        # Przykładowy wykres z pluginu
+        fig = generate_fig_popularity_tracks(top_df())
         return fig
 
     @output
     @render.plot  
-    def fig13b():
-        fig = generate_fig13(top_df())
+    def fig_popularity_danceability():
+        fig = generate_fig_popularity_danceability(top_df())
+        return fig
+
+    @output
+    @render.plot  
+    def fig_top_genres():
+        fig = generate_fig_top_genres(top_df())
+        return fig
+
+    @output
+    @render.plot  
+    def fig_genres_popularity():
+        fig = generate_fig_genres_popularity(top_df())
         return fig
         
     @output
     @render.plot  
-    def fig14b():
-        fig = generate_fig14(top_df())
+    def fig_tempo_popularity():
+        fig = generate_fig_tempo_popularity(top_df())
         return fig
         
     @output
     @render.plot  
-    def fig6b():
-        # Przykładowy wykres z pluginu
-        fig = generate_fig6(top_df())
-        return fig
-    
-    @output
-    @render.plot  
-    def fig8b():
-        fig = generate_fig8(top_df())
-        return fig
-        
-    @output
-    @render.plot  
-    def fig10b():
-        fig = generate_fig10(top_df())
+    def fig_energy_popularity():
+        fig = generate_fig_energy_popularity(top_df())
         return fig
