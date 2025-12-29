@@ -11,8 +11,6 @@ from Plugins.DataLoad import YouTubeAnalyzerPlugin
 from Plugins.DataLoad import ImportFromLocalPlugin
 from Plugins.DataSummary import WrappedSummaryPlugin
 
-
-
 class WrappedDataPrepare:
     '''
     Wczytanie i przygotowanie pliku z wrapped spotify
@@ -22,7 +20,7 @@ class WrappedDataPrepare:
 
     def file_load(self, file_path):
         if os.path.exists(file_path):
-            print(f"Odczytano plik {file_path}")
+            print(f"Odczytano plik: {file_path}")
             df = pd.read_csv(file_path)
         else:
             print("Plik nie istnieje w podanej lokalizacji.")
@@ -76,7 +74,7 @@ class WrappedListProcess:
         Wczytanie pliku i przygotowanie kolumn
         '''
         prepare_file = WrappedDataPrepare()
-        print(f"Obróbka pliku: {data_path}/{input_path}/{file_name} ")
+        print(f"Obróbka pliku: {input_path}\{file_name} ")
 
         df_wrapped = prepare_file.file_load(data_path/input_path/file_name)
         df_wrapped = prepare_file.prepare_columns(df_wrapped)

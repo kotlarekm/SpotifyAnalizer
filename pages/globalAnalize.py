@@ -1,12 +1,8 @@
 # 1.2 Importowanie bibliotek i modułów niezbędnych do stworzenia aplikacji i analizy danych
 from shiny import ui, reactive, render # potrzebne do stworzenia aplikacji
 from htmltools import css # potrzebne do stylizacji
-from pathlib import Path # potrzebne do pracy z plikami
 from Plugins.Charts import generate_fig_popularity_tracks, generate_fig_popularity_danceability, generate_fig_energy_popularity, generate_fig_top_genres, generate_fig_genres_popularity, generate_fig_tempo_popularity
-from modules.data_loader import load_user_file
 
-folder_path_wrapped = Path(__file__).resolve().parent.parent / "Data"   # ścieżka do folderu z plikami które są wybierane w lewym panelu  
-folder_path_top = Path(__file__).resolve().parent.parent / "DataCompare"   # ścieżka do folderu z plikami które są wybierane w lewym panelu  
 
 def layout():
     return ui.page_fluid(
@@ -43,17 +39,17 @@ def layout():
                 )    ),
         )
 
-def server(input, output, session):
+def server(input, output, session, top_data):
 
     @reactive.calc
     def top_df():
-        df_top, _ = load_user_file(folder_path_top, input.top_user())
-        return df_top
+        df, _ = top_data()
+        return df
 
     @reactive.calc
     def top_results_df():
-        _, df_top_results = load_user_file(folder_path_top, input.top_user())
-        return df_top_results
+        _, df_results = top_data()
+        return df_results
     
     @output
     @render.plot  

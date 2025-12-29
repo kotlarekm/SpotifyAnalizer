@@ -1,23 +1,14 @@
 # 1.2 Importowanie bibliotek i modułów niezbędnych do stworzenia aplikacji i analizy danych
-from shiny import ui, App, reactive, render # potrzebne do stworzenia aplikacji
+from shiny import ui, App, reactive, render, module # potrzebne do stworzenia aplikacji
 from htmltools import css # potrzebne do stylizacji
-import pandas as pd # potrzebne do pracy z danymi
-import numpy as np # potrzebne do pracy z danymi
-from pathlib import Path # potrzebne do pracy z plikami
 from sklearn.metrics.pairwise import cosine_similarity # potrzebne do porównywania wektorów
-import os # potrzebne do pracy z plikami
 from faicons import icon_svg as icon # potrzebne do ikon
 import plotly.express as px # potrzebne do wizualizacji
 from shinywidgets import output_widget, render_plotly # potrzebne do wizualizacji 
 import ast # potrzebne do konwersji stringów do list
 from wordcloud import WordCloud #potrzebne do wizualizacji chmury słow
 import matplotlib.pyplot as plt #potrzebne do wizualizacji chmury słow
-from Plugins.DataProcess import WrappedDataPrepare # potrzebne do przygotowania danych
-from Plugins.DataLoad import ImportFromLocalPlugin # potrzebne do wczytywania danych
-from Plugins.DataSummary import WrappedSummaryPlugin # potrzebne do podsumowania danych
 from Plugins.Charts import generate_histogram, generate_tree_map  # potrzebne do wizualizacji
-from Plugins.DataSummary import RecommendationPlugin
-from modules.data_loader import load_user_file
 
 folder_wrapped = "Data"   
 
@@ -131,18 +122,18 @@ def layout():
         )
     )
 
-def server(input, output, session):
+def server(input, output, session, base_data):
 
     @reactive.calc
     def base_df():
-        df_base, _ = load_user_file(folder_wrapped, input.base_user())
-        return df_base
+        df, _ = base_data()
+        return df
 
     @reactive.calc
     def base_results_df():
-        _, df_base_results = load_user_file(folder_wrapped, input.base_user())
-        return df_base_results
-
+        _, df_results = base_data()
+        return df_results
+    
     @output
     @render.text
     def top_artist():

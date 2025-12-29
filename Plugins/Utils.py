@@ -1,6 +1,13 @@
 from sklearn.metrics.pairwise import cosine_similarity # potrzebne do porównywania wektorów
 import ast
 
+import os
+
+
+from pathlib import Path
+
+analyser_path = Path(os.getcwd()).resolve()
+
 def create_track_artist_column(df):
     '''
     łączy kolumnę track i artist w jedną
@@ -59,3 +66,16 @@ def genre_overlap_pct(base_df, top_df):
     common_genres = base_genres & compare_genres
     overlap_pct = (len(common_genres) / len(base_genres)) * 100 if base_genres else 0
     return f"{overlap_pct:.1f}%"
+
+#wczytanie df'a
+def load_user_file(path, filename):
+    from Plugins.DataProcess import WrappedListProcess
+
+    wrapped_list = WrappedListProcess()
+    full_name = f"{filename}.csv"
+    print(f"Odczytuję plik: {path}\{full_name}")
+    return wrapped_list.process_list(
+        file_name=full_name,
+        data_path=analyser_path,
+        input_path=path
+        )

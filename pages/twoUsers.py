@@ -2,25 +2,13 @@
 from shiny import ui, App, reactive, render # potrzebne do stworzenia aplikacji
 from htmltools import css # potrzebne do stylizacji
 import pandas as pd # potrzebne do pracy z danymi
-import numpy as np # potrzebne do pracy z danymi
-from pathlib import Path # potrzebne do pracy z plikami
-from sklearn.metrics.pairwise import cosine_similarity # potrzebne do porównywania wektorów
-import os # potrzebne do pracy z plikami
 from faicons import icon_svg as icon # potrzebne do ikon
 import plotly.express as px # potrzebne do wizualizacji
 from shinywidgets import output_widget, render_plotly # potrzebne do wizualizacji 
-import ast # potrzebne do konwersji stringów do list
-from wordcloud import WordCloud #potrzebne do wizualizacji chmury słow
 import matplotlib.pyplot as plt #potrzebne do wizualizacji chmury słow
-from Plugins.DataProcess import WrappedDataPrepare # potrzebne do przygotowania danych
-from Plugins.DataLoad import ImportFromLocalPlugin # potrzebne do wczytywania danych
-from Plugins.DataSummary import WrappedSummaryPlugin # potrzebne do podsumowania danych
 from Plugins.Charts import wykres_pie, najpopularniejsze_tag, wykres_dekady, generate_wordcloud, generate_histogram, generate_popularity_boxplot_both, generate_bpm_histogram_both # potrzebne do wizualizacji
 from Plugins.Utils import csv_path, create_track_artist_column, genre_overlap_pct
 from Plugins.DataSummary import RecommendationPlugin
-from modules.data_loader import load_user_file
-
-folder_path_wrapped = Path(__file__).resolve().parent.parent / "Data"   # ścieżka do folderu z plikami które są wybierane w lewym panelu  
 
 def layout():
     return ui.page_fluid(
@@ -105,28 +93,28 @@ def layout():
     )
     )
 
-def server(input, output, session):
+def server(input, output, session, base_data, compare_data):
 
     #Wczytanie ramek danych
     @reactive.calc
     def base_df():
-        df_base, _ = load_user_file(folder_path_wrapped, input.base_user())
-        return df_base
+        df, _ = base_data()
+        return df
 
     @reactive.calc
     def base_results_df():
-        _, df_base_results = load_user_file(folder_path_wrapped, input.base_user())
-        return df_base_results
+        _, df_results = base_data()
+        return df_results
 
     @reactive.calc
     def compare_df():
-        df_compare, _ = load_user_file(folder_path_wrapped, input.compare_user())
-        return df_compare
+        df, _ = compare_data()
+        return df
 
     @reactive.calc
     def compare_results_df():
-        _, df_compare_results = load_user_file(folder_path_wrapped, input.compare_user())
-        return df_compare_results
+        _, df_results = compare_data()
+        return df_results
 
     # 3.3 Raport unikalności gustu
 #  % wspólnych utworów
