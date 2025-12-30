@@ -11,6 +11,10 @@ from Plugins.DataLoad import YouTubeAnalyzerPlugin
 from Plugins.DataLoad import ImportFromLocalPlugin
 from Plugins.DataSummary import WrappedSummaryPlugin
 
+from pathlib import Path
+
+analyser_path = Path(os.getcwd()).resolve()
+
 class WrappedDataPrepare:
     '''
     Wczytanie i przygotowanie pliku z wrapped spotify
@@ -157,3 +161,15 @@ class WrappedListProcess:
         df_combined, df_results = self.combine_and_save(df_from_api, df_from_local, df_local, data_path, output_path, local_path, file_name)
 
         return df_combined, df_results
+    
+    #wczytanie df'a
+def load_user_file(path, filename):
+
+    wrapped_list = WrappedListProcess()
+    full_name = f"{filename}.csv"
+    print(f"Odczytuję plik: {path}\{full_name}")
+    return wrapped_list.process_list(
+        file_name=full_name,
+        data_path=analyser_path,
+        input_path=path
+        )

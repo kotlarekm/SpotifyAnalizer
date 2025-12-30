@@ -9,6 +9,8 @@ import ast # potrzebne do konwersji stringów do list
 from wordcloud import WordCloud #potrzebne do wizualizacji chmury słow
 import matplotlib.pyplot as plt #potrzebne do wizualizacji chmury słow
 from Plugins.Charts import generate_histogram, generate_tree_map  # potrzebne do wizualizacji
+from Plugins.AskAI import OpenAIPlugin
+import asyncio
 
 folder_wrapped = "Data"   
 
@@ -119,7 +121,17 @@ def layout():
         ui.h3("Mapa utworów - Artysta i album z opisem"),
         ui.row(
             output_widget("tree_map")
-        )
+        ),
+        ui.h3("Komentarz AI"),
+        ui.row(
+                ui.input_action_button("button_single_question", "Zapytaj AI o Komentarz")
+            ),
+        ui.row(
+            ui.div(
+                "Odpowiedź AI:",
+                ui.output_text("text_ai_comment"),
+                class_="ai-response-box"
+            ))
     )
 
 def server(input, output, session, base_data):
@@ -391,3 +403,29 @@ def server(input, output, session, base_data):
             return image_path  # Zwróć ścieżkę do pliku obrazu
         else:
             return None
+
+    @ui.bind_task_button(button_id="button_single_question")
+    @reactive.extended_task
+    async def ask_ai_single(df): 
+        ask_AI = OpenAIPlugin() 
+    
+        try: 
+            result = await asyncio.wait_for( 
+                asyncio.to_thread( 
+                    ask_AI.SingleUserQuestion, df ),
+                      timeout=40 # sekundy 
+                      ) 
+        except asyncio.TimeoutError: 
+            result = "Timeout: OpenAI nie odpowiedziało na czas" 
+        
+        return result
+    
+    @reactive.effect
+    @reactive.event(input.button_single_question)
+    def handle_click_single_user():
+        ask_ai_single(base_results_df())
+
+    @output
+    @render.text()
+    def text_ai_comment():
+        return ask_ai_single.result()

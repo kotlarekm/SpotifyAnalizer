@@ -16,7 +16,8 @@ from Plugins.DataSummary import WrappedSummaryPlugin # potrzebne do podsumowania
 from Plugins.Charts import wykres_pie, najpopularniejsze_tag, wykres_dekady, generate_wordcloud, generate_histogram, generate_popularity_boxplot_both, generate_bpm_histogram_both # potrzebne do wizualizacji
 from Plugins.Utils import csv_path, create_track_artist_column, genre_overlap_pct
 from Plugins.DataSummary import RecommendationPlugin
-
+from Plugins.AskAI import OpenAIPlugin
+import asyncio
 
 
 def layout():
@@ -88,6 +89,16 @@ def layout():
             ui.h3("Porównanie popularności"),
             ui.output_plot('popularity_boxplot_both_user_global')),
     ),
+    ui.h3("Komentarz AI"),
+        ui.row(
+                ui.input_action_button("button_user_global_question", "Zapytaj AI o Komentarz")
+            ),
+        ui.row(
+            ui.div(
+                "Odpowiedź AI:",
+                ui.output_text("text_ai_comment_user_global"),
+                class_="ai-response-box"
+            )),
     ui.row(
         ui.column(4, ui.markdown("### 📀 Wspólne utwory")),
         ui.column(4, ui.markdown("### 🎤 Wspólne wykonawcy")),
@@ -286,6 +297,32 @@ def server(input, output, session, base_data, top_data):
         fig = generate_popularity_boxplot_both(base_df(), top_df())
         return fig
     
+    @ui.bind_task_button(button_id="button_user_global_question")
+    @reactive.extended_task
+    async def ask_ai_user_global(base_df, top_df): 
+        ask_AI = OpenAIPlugin() 
+    
+        try: 
+            result = await asyncio.wait_for( 
+                asyncio.to_thread( 
+                    ask_AI.UserGlobalQuestion, base_df, top_df ),
+                      timeout=40 # sekundy 
+                      ) 
+        except asyncio.TimeoutError: 
+            result = "Timeout: OpenAI nie odpowiedziało na czas" 
+        
+        return result
+    
+    @reactive.effect
+    @reactive.event(input.button_user_global_question)
+    def handle_click_two_users():
+        ask_ai_user_global(base_results_df(), top_results_df())
+
+    @output
+    @render.text()
+    def text_ai_comment_user_global():
+        return ask_ai_user_global.result()
+
     # rekomendacje
     #rekomendacje użytkownika 1
 

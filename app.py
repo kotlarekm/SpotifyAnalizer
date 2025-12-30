@@ -9,7 +9,7 @@
 from shiny import ui, App, reactive, module  # potrzebne do stworzenia aplikacji
 from htmltools import css # potrzebne do stylizacji
 from pages import singleUser, twoUsers, userGlobal, globalAnalize, fileSelection
-from Plugins.Utils import load_user_file
+from Plugins.DataProcess import load_user_file
 from pathlib import Path # potrzebne do pracy z plikami
 
 folder_path_wrapped = Path(__file__).resolve().parent / "Data"   # ścieżka do folderu z plikami które są wybierane w lewym panelu  

@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt #potrzebne do wizualizacji chmury słow
 from Plugins.Charts import wykres_pie, najpopularniejsze_tag, wykres_dekady, generate_wordcloud, generate_histogram, generate_popularity_boxplot_both, generate_bpm_histogram_both # potrzebne do wizualizacji
 from Plugins.Utils import csv_path, create_track_artist_column, genre_overlap_pct
 from Plugins.DataSummary import RecommendationPlugin
+from Plugins.AskAI import OpenAIPlugin
+import asyncio
 
 def layout():
     return ui.page_fluid(
@@ -35,8 +37,9 @@ def layout():
 
  
     ui.h3("Porównanie parametrów użytkowników - Użytkownik bazowy"),
-    ui.output_data_frame("table_compare_parameters"),
-
+    ui.row(
+        ui.output_data_frame("table_compare_parameters"),
+    ),
 
     ui.layout_columns(
         ui.panel_well(
@@ -79,6 +82,16 @@ def layout():
             ui.h3("Porównanie popularności"),
             ui.output_plot('popularity_boxplot_both')),
     ),
+    ui.h3("Komentarz AI"),
+        ui.row(
+                ui.input_action_button("button_two_users_question", "Zapytaj AI o Komentarz")
+            ),
+        ui.row(
+            ui.div(
+                "Odpowiedź AI:",
+                ui.output_text("text_ai_comment_two_users"),
+                class_="ai-response-box"
+            )),
     ui.row(
         ui.column(3, ui.markdown("### 🅰️🎧 Polecane utwory od użytkownika bazowego")),
         ui.column(3, ui.markdown("### 📀 Wspólne utwory")),
@@ -280,7 +293,33 @@ def server(input, output, session, base_data, compare_data):
     def popularity_boxplot_both():
         fig = generate_popularity_boxplot_both(base_df(), compare_df())
         return fig
+
+    @ui.bind_task_button(button_id="button_two_users_question")
+    @reactive.extended_task
+    async def ask_ai_two_users(base_df, compare_df): 
+        ask_AI = OpenAIPlugin() 
     
+        try: 
+            result = await asyncio.wait_for( 
+                asyncio.to_thread( 
+                    ask_AI.TwoUsersQuestion, base_df, compare_df ),
+                      timeout=40 # sekundy 
+                      ) 
+        except asyncio.TimeoutError: 
+            result = "Timeout: OpenAI nie odpowiedziało na czas" 
+        
+        return result
+    
+    @reactive.effect
+    @reactive.event(input.button_two_users_question)
+    def handle_click_two_users():
+        ask_ai_two_users(base_results_df(), compare_results_df())
+
+    @output
+    @render.text()
+    def text_ai_comment_two_users():
+        return ask_ai_two_users.result()
+
     # rekomendacje
     #rekomendacje użytkownika 1
     @output
