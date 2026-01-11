@@ -50,10 +50,11 @@ class OpenAIPlugin:
 
         return result
 
-    def SingleUserQuestion(self, df):
+    def SingleUserQuestion(self, df, result_df):
 
-        json_data = df.to_json(orient="records", force_ascii=False)
-
+        json_result = result_df.to_json(orient="records", force_ascii=False)
+        json_all_tracks = df[["Track name", "Artist name"]].to_json(orient="records", force_ascii=False)
+        
         prompt =(
             "Jesteś krytykiem muzycznym i analitykiem gustu muzycznego."
 
@@ -66,12 +67,14 @@ class OpenAIPlugin:
             "- energii / emocjach"
             "- ewentualnych kontrastach w gustach"
 
-            "Dane (JSON):"
-            f"{json_data}"
+            "Dane (JSON), wszystkie utwory i wykonawcy:"
+            f"{json_all_tracks}"
+            "Dane (JSON), analiza wskaźników utworów:"
+            f"{json_result}"
             "Nie opisuj danych wprost."
             "Wyciągaj wnioski i uogólnienia."
+            "Na podstawie powyższych plików i analizy zaproponuj też 3-5 utworów, które dany użytkownik może polubić."
         )
-
         result = self.askOpenAI(prompt=prompt)
 
         return result

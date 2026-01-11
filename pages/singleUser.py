@@ -406,13 +406,13 @@ def server(input, output, session, base_data):
 
     @ui.bind_task_button(button_id="button_single_question")
     @reactive.extended_task
-    async def ask_ai_single(df): 
+    async def ask_ai_single(df, result_df): 
         ask_AI = OpenAIPlugin() 
     
         try: 
             result = await asyncio.wait_for( 
                 asyncio.to_thread( 
-                    ask_AI.SingleUserQuestion, df ),
+                    ask_AI.SingleUserQuestion, df, result_df),
                       timeout=40 # sekundy 
                       ) 
         except asyncio.TimeoutError: 
@@ -423,7 +423,7 @@ def server(input, output, session, base_data):
     @reactive.effect
     @reactive.event(input.button_single_question)
     def handle_click_single_user():
-        ask_ai_single(base_results_df())
+        ask_ai_single(base_df(), base_results_df())
 
     @output
     @render.text()
